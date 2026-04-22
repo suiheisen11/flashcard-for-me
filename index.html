@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="英単語カード" />
+  <title>英単語フラッシュカード</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&family=DM+Mono&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { background: #080808; color: #fff; font-family: 'DM Sans', 'Hiragino Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+
+    #header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 52px 20px 16px;
+      border-bottom: 1px solid #1a1a1a;
+      background: rgba(8,8,8,0.97);
+      position: sticky; top: 0; z-index: 50;
+    }
+    #header .label { color: #e94560; font-size: 10px; letter-spacing: 4px; font-family: 'DM Mono', monospace; }
+    #header .title { font-size: 20px; font-weight: 900; font-family: 'Playfair Display', serif; }
+    .mode-toggle { background: #1a1a1a; border-radius: 20px; padding: 4px; display: flex; gap: 2px; }
+    .mode-btn { background: transparent; border: none; color: #666; padding: 6px 14px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+    .mode-btn.active { background: #e94560; color: #fff; }
+    #add-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+    #tag-bar { padding: 14px 20px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
+    #tag-bar::-webkit-scrollbar { display: none; }
+    .tag-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 0.2s; }
+    .tag-btn.active { background: #e94560; border-color: #e94560; }
+
+    #study-mode { padding: 0 20px 40px; animation: slideUp 0.4s ease; }
+    #progress-bar-wrap { margin-bottom: 18px; }
+    #progress-labels { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    #progress-labels span { color: #555; font-size: 12px; font-family: monospace; }
+    #progress-track { height: 2px; background: #1a1a1a; border-radius: 2px; }
+    #progress-fill { height: 100%; background: #e94560; border-radius: 2px; transition: width 0.3s; }
+
+    #card-scene { perspective: 1200px; margin-bottom: 18px; cursor: pointer; }
+    #card-inner { position: relative; min-height: 300px; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(.4,2,.55,.9); }
+    #card-inner.flipped { transform: rotateY(180deg); }
+    .card-face {
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      border-radius: 22px; padding: 28px 24px;
+      display: flex; flex-direction: column;
+    }
+    #card-front {
+      background: linear-gradient(135deg, #0d0d0d 0%, #080808 100%);
+      border: 1px solid rgba(233,69,96,0.2);
+      box-shadow: 0 20px 60px rgba(233,69,96,0.1);
+      justify-content: space-between; min-height: 300px;
+    }
+    #card-back {
+      position: absolute; inset: 0;
+      background: #0d0d0d;
+      border: 1px solid rgba(233,69,96,0.35);
+      transform: rotateY(180deg);
+      gap: 12px;
+      box-shadow: 0 20px 60px rgba(233,69,96,0.1);
+    }
+    .card-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .card-hint { color: #333; font-size: 11px; font-family: monospace; }
+    .card-word { font-size: clamp(36px, 10vw, 60px); font-weight: 900; font-family: 'Playfair Display', serif; letter-spacing: -2px; text-align: center; line-height: 1.1; }
+    .card-pron { font-family: 'DM Mono', monospace; font-size: 15px; text-align: center; opacity: 0.8; }
+    .card-dots { text-align: center; color: #333; font-size: 22px; }
+    .back-word { font-size: 20px; font-weight: 800; font-family: 'Playfair Display', serif; }
+    .meaning-box { background: #1a1a1a; border-radius: 12px; padding: 14px; }
+    .meaning-label { color: #555; font-size: 10px; letter-spacing: 2px; margin-bottom: 6px; font-family: monospace; }
+    .meaning-text { color: #fff; font-size: 18px; font-weight: 700; }
+    .example-box { background: #111; border-radius: 12px; padding: 14px; border-left: 3px solid #e94560; }
+    .example-en { color: #aaa; font-size: 13px; font-style: italic; margin-bottom: 4px; }
+    .example-jp { color: #555; font-size: 12px; }
+
+    .media-img { width: 100%; border-radius: 12px; object-fit: cover; max-height: 160px; border: 1px solid #2a2a2a; display: block; }
+    .media-btn-row { display: flex; gap: 8px; }
+    .media-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 12px 10px; border-radius: 12px; text-decoration: none;
+      font-weight: 700; font-size: 13px; border: none; cursor: pointer; white-space: nowrap;
+    }
+    .media-btn.yt  { background: #e94560; color: #fff; }
+    .media-btn.lnk { background: #1e1e1e; border: 1px solid #2a2a2a; color: #ccc; }
+    .edit-btn { background: transparent; border: 1px solid #1f1f1f; color: #3a3a3a; width: 100%; padding: 9px; border-radius: 10px; font-size: 11px; cursor: pointer; }
+
+    #controls { display: flex; gap: 12px; align-items: center; justify-content: center; }
+    .nav-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; width: 52px; height: 52px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+    .nav-btn.next { background: #e94560; border: none; }
+    #learned-btn { padding: 14px 0; border-radius: 50px; cursor: pointer; font-size: 13px; font-weight: 700; flex: 1; max-width: 180px; border: 1px solid #2a2a2a; background: #1a1a1a; color: #aaa; }
+    #card-hint-text { text-align: center; margin-top: 14px; color: #2a2a2a; font-size: 11px; }
+
+    #list-mode { padding: 14px 20px 40px; animation: slideUp 0.3s ease; display: none; }
+    .list-item { background: #0d0d0d; border-radius: 14px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-left: 3px solid #e94560; border-top: 1px solid #1a1a1a; border-right: 1px solid #1a1a1a; border-bottom: 1px solid #1a1a1a; }
+    .list-word { font-size: 17px; font-weight: 800; font-family: 'Playfair Display', serif; }
+    .list-meaning { color: #666; font-size: 12px; margin-top: 3px; }
+    .list-arrow { color: #333; font-size: 18px; }
+
+    /* Modal — slides up from bottom like iOS sheet */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 100; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(8px); animation: fadeIn 0.2s ease; }
+    .modal-box { background: #0d0d0d; border-radius: 24px 24px 0 0; padding: 28px 22px 44px; width: 100%; max-width: 520px; border-top: 1px solid #2a2a2a; max-height: 93vh; overflow-y: auto; }
+    .modal-label { color: #e94560; font-size: 10px; letter-spacing: 3px; font-family: monospace; margin-bottom: 6px; }
+    .modal-title { color: #fff; font-size: 20px; font-weight: 700; font-family: 'Playfair Display', serif; margin-bottom: 18px; }
+    .field-label { color: #555; font-size: 11px; letter-spacing: 1px; margin-bottom: 5px; font-family: monospace; text-transform: uppercase; }
+    .modal input, .modal select {
+      width: 100%; background: #141414; border: 1px solid #252525;
+      border-radius: 10px; padding: 12px 13px; color: #fff; font-size: 14px;
+      outline: none; margin-bottom: 12px; font-family: inherit;
+    }
+    .modal input::placeholder { color: #3a3a3a; }
+    .section-divider { border: none; border-top: 1px solid #181818; margin: 16px 0; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+    .modal-cancel { flex: 1; background: #141414; border: 1px solid #252525; color: #666; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 14px; }
+    .modal-submit { flex: 2; background: #e94560; border: none; color: #fff; padding: 14px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 700; }
+
+    .tab-row { display: flex; gap: 6px; margin-bottom: 14px; }
+    .tab-btn { flex: 1; padding: 10px 6px; border-radius: 10px; border: 1px solid #252525; background: #141414; color: #555; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: #1e1e1e; border-color: #e94560; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    #img-preview { width: 100%; border-radius: 10px; object-fit: cover; max-height: 140px; margin-bottom: 12px; display: none; border: 1px solid #252525; }
+    .tip { color: #3a3a3a; font-size: 11px; margin-top: -8px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <div class="label">ENGLISH DECK</div>
+    <div class="title">単語フラッシュカード</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="setMode('study')">学習</button>
+      <button class="mode-btn" onclick="setMode('list')">一覧</button>
+    </div>
+    <button id="add-btn" onclick="openAdd()">+ 追加</button>
+  </div>
+</div>
+
+<div id="tag-bar">
+  <button class="tag-btn active" onclick="setTag('全て')">全て</button>
+  <span id="learned-count" style="margin-left:auto;color:#555;font-size:12px;white-space:nowrap;">0/0 完了</span>
+</div>
+
+<!-- Study Mode -->
+<div id="study-mode">
+  <div id="progress-bar-wrap">
+    <div id="progress-labels">
+      <span id="prog-index">1 / 1</span>
+      <span id="prog-pct">0%</span>
+    </div>
+    <div id="progress-track"><div id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div id="card-scene" onclick="flipCard()">
+    <div id="card-inner">
+      <div class="card-face" id="card-front">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <span id="front-tag" class="card-tag"></span>
+          <span class="card-hint">タップして意味を見る</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:24px 0;text-align:center;">
+          <div id="front-word" class="card-word"></div>
+          <div id="front-pron" class="card-pron"></div>
+        </div>
+        <div class="card-dots">···</div>
+      </div>
+      <div class="card-face" id="card-back">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span id="back-word" class="back-word"></span>
+          <span id="back-tag" class="card-tag"></span>
+        </div>
+        <div class="meaning-box">
+          <div class="meaning-label">MEANING</div>
+          <div id="back-meaning" class="meaning-text"></div>
+        </div>
+        <div class="example-box" id="example-box">
+          <div id="back-example" class="example-en"></div>
+          <div id="back-example-jp" class="example-jp"></div>
+        </div>
+        <div id="back-media"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button class="nav-btn" onclick="go(-1)">←</button>
+    <button id="learned-btn" onclick="toggleLearned()">覚えた</button>
+    <button class="nav-btn next" onclick="go(1)">→</button>
+  </div>
+  <div id="card-hint-text">カードをタップして意味を確認　•　矢印で次の単語へ</div>
+</div>
+
+<div id="list-mode"></div>
+
+<!-- Add / Edit Modal -->
+<div id="add-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeAdd()">
+  <div class="modal-box modal">
+    <div class="modal-label" id="modal-lbl">NEW CARD</div>
+    <div class="modal-title" id="modal-ttl">単語を追加</div>
+
+    <div class="field-label">英単語 *</div>
+    <input id="f-word" placeholder="例: Serendipity" />
+
+    <div class="field-label">発音</div>
+    <input id="f-pron" placeholder="例: /ˌserənˈdipɪti/" />
+
+    <div class="field-label">意味（日本語）*</div>
+    <input id="f-meaning" placeholder="例: 思いがけない幸運な発見" />
+
+    <div class="field-label">例文（英語）</div>
+    <input id="f-example" placeholder="例: Finding that café was pure serendipity." />
+
+    <div class="field-label">例文（日本語）</div>
+    <input id="f-exjp" placeholder="例: そのカフェを見つけたのは純粋な幸運だった。" />
+
+    <div class="field-label">品詞</div>
+    <select id="f-tag">
+      <option>名詞</option><option>形容詞</option><option>動詞</option><option>副詞</option><option>Idiom</option><option>Phrasal Verb</option>
+    </select>
+
+    <hr class="section-divider" />
+    <div class="field-label" style="margin-bottom:12px;">📎 動画・画像を追加（任意）</div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('yt')">▶ YouTube</button>
+      <button class="tab-btn" onclick="switchTab('img')">🖼 画像URL</button>
+      <button class="tab-btn" onclick="switchTab('lnk')">🔗 リンク</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-yt">
+      <div class="field-label">YouTube URL</div>
+      <input id="f-yt" placeholder="https://www.youtube.com/watch?v=..." />
+      <p class="tip">YouTubeを開いて「共有」→URLをコピーして貼り付け</p>
+    </div>
+
+    <div class="tab-panel" id="tab-img">
+      <div class="field-label">画像URL</div>
+      <input id="f-imgurl" placeholder="https://example.com/image.jpg" oninput="previewImg()" />
+      <img id="img-preview" src="" alt="preview" />
+      <p class="tip">画像を長押し→「リンクをコピー」して貼り付け</p>
+    </div>
+
+    <div class="tab-panel" id="tab-lnk">
+      <div class="field-label">リンクURL</div>
+      <input id="f-linkurl" placeholder="https://..." />
+      <div class="field-label">ボタンのラベル</div>
+      <input id="f-linklabel" placeholder="例: 解説記事を読む" />
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAdd()">キャンセル</button>
+      <button class="modal-submit" onclick="submitCard()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = { "名詞":"#e94560","形容詞":"#a78bfa","動詞":"#40c057","副詞":"#fd7e14","Idiom":"#22d3ee","Phrasal Verb":"#f59e0b" };
+const col = tag => COLORS[tag]||"#e94560";
+
+let cards = JSON.parse(localStorage.getItem("en_cards3")||"null") || [
+  {id:1,word:"Serendipity",pronunciation:"/ˌserənˈdipɪti/",meaning:"思いがけない幸運な発見",example:"Finding that café was pure serendipity.",exampleJP:"そのカフェを見つけたのは純粋な幸運だった。",tag:"名詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
+  {id:2,word:"Ephemeral",pronunciation:"/ɪˈfemərəl/",meaning:"はかない、短命な",example:"The beauty of cherry blossoms is ephemeral.",exampleJP:"桜の美しさははかない。",tag:"形容詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
+  {id:3,word:"Resilience",pronunciation:"/rɪˈzɪliəns/",meaning:"回復力、しなやかさ",example:"She showed incredible resilience after the setback.",exampleJP:"彼女は挫折の後、驚くべき回復力を見せた。",tag:"名詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
+  {id:4,word:"Ambiguous",pronunciation:"/æmˈbɪɡjuəs/",meaning:"曖昧な、多義的な",example:"The instructions were ambiguous.",exampleJP:"その指示は曖昧だった。",tag:"形容詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
+  {id:5,word:"Eloquent",pronunciation:"/ˈeləkwənt/",meaning:"雄弁な、表現力豊かな",example:"His eloquent speech moved the audience.",exampleJP:"彼の雄弁なスピーチは聴衆を感動させた。",tag:"形容詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
+];
+let learned = new Set(JSON.parse(localStorage.getItem("en_learned3")||"[]"));
+let curTag="全て", curIdx=0, flipped=false, mode="study", editId=null, activeTab="yt";
+
+const save = () => { localStorage.setItem("en_cards3",JSON.stringify(cards)); localStorage.setItem("en_learned3",JSON.stringify([...learned])); };
+const filtered = () => curTag==="全て" ? cards : cards.filter(c=>c.tag===curTag);
+const current = () => { const f=filtered(); return f[Math.min(curIdx,f.length-1)]; };
+const ytId = url => { if(!url) return null; const m=url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/); return m?m[1]:null; };
+
+function renderTagBar(){
+  const tags=["全て",...new Set(cards.map(c=>c.tag))];
+  document.getElementById("tag-bar").innerHTML =
+    tags.map(t=>`<button class="tag-btn${t===curTag?" active":""}" onclick="setTag('${t}')">${t}</button>`).join("") +
+    `<span id="learned-count" style="margin-left:auto;color:#555;font-size:12px;white-space:nowrap;">${learned.size}/${cards.length} 完了</span>`;
+}
+
+function renderCard(){
+  const c=current(); if(!c) return;
+  const f=filtered(), idx=f.indexOf(c), pct=Math.round(((idx+1)/f.length)*100);
+  document.getElementById("prog-index").textContent=`${idx+1} / ${f.length}`;
+  document.getElementById("prog-pct").textContent=`${pct}%`;
+  document.getElementById("progress-fill").style.width=pct+"%";
+
+  const ac=col(c.tag);
+  document.getElementById("card-front").style.borderColor=ac+"33";
+
+  const ft=document.getElementById("front-tag");
+  ft.textContent=c.tag; ft.style.background=ac+"22"; ft.style.color=ac;
+  document.getElementById("front-word").textContent=c.word;
+  document.getElementById("front-pron").textContent=c.pronunciation||"";
+  document.getElementById("front-pron").style.color=ac;
+
+  const bt=document.getElementById("back-tag");
+  bt.textContent=c.tag; bt.style.background=ac+"22"; bt.style.color=ac;
+  document.getElementById("back-word").textContent=c.word;
+  document.getElementById("back-word").style.color=ac;
+  document.getElementById("back-meaning").textContent=c.meaning;
+  document.getElementById("back-example").textContent=c.example?`"${c.example}"`:"";;
+  document.getElementById("back-example-jp").textContent=c.exampleJP||"";
+  document.getElementById("example-box").style.borderLeftColor=ac;
+  document.getElementById("example-box").style.display=c.example?"":"none";
+
+  // — Media section —
+  let html="";
+  if(c.imgUrl) html+=`<img class="media-img" src="${c.imgUrl}" alt="${c.word}" onerror="this.style.display='none'" onclick="event.stopPropagation()" />`;
+
+  const vid=ytId(c.ytUrl);
+  const btns=[];
+  if(vid) btns.push(`<a class="media-btn yt" href="https://www.youtube.com/watch?v=${vid}" target="_blank" onclick="event.stopPropagation()">▶ YouTube動画</a>`);
+  if(c.linkUrl) btns.push(`<a class="media-btn lnk" href="${c.linkUrl}" target="_blank" onclick="event.stopPropagation()">🔗 ${c.linkLabel||"リンクを開く"}</a>`);
+  if(!vid && !c.linkUrl){
+    const q=encodeURIComponent(c.word+" vocabulary lesson English");
+    btns.push(`<a class="media-btn yt" href="https://www.youtube.com/results?search_query=${q}" target="_blank" onclick="event.stopPropagation()">▶ YouTubeで検索</a>`);
+  }
+  if(btns.length) html+=`<div class="media-btn-row">${btns.join("")}</div>`;
+  html+=`<button class="edit-btn" onclick="event.stopPropagation();openEdit(${c.id})">✎ この単語を編集</button>`;
+  document.getElementById("back-media").innerHTML=html;
+
+  // Sync card height
+  requestAnimationFrame(()=>{
+    const front=document.getElementById("card-front");
+    const back=document.getElementById("card-back");
+    const h=Math.max(front.scrollHeight, back.scrollHeight, 300);
+    document.getElementById("card-inner").style.minHeight=h+"px";
+    back.style.minHeight=h+"px";
+  });
+
+  const lb=document.getElementById("learned-btn");
+  if(learned.has(c.id)){
+    lb.textContent="✓ 覚えた！";
+    lb.style.cssText="flex:1;max-width:180px;padding:14px 0;border-radius:50px;cursor:pointer;font-size:13px;font-weight:700;background:#1a472a;border:1px solid #40c057;color:#40c057;";
+  } else {
+    lb.textContent="覚えた";
+    lb.style.cssText="flex:1;max-width:180px;padding:14px 0;border-radius:50px;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;";
+  }
+  document.getElementById("card-inner").classList.remove("flipped");
+  flipped=false;
+}
+
+function renderList(){
+  document.getElementById("list-mode").innerHTML=filtered().map((c,i)=>{
+    const ac=col(c.tag), hasMedia=c.ytUrl||c.imgUrl||c.linkUrl;
+    return `<div class="list-item" style="border-left-color:${ac}" onclick="goToCard(${i})">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="list-word">${c.word}</span>
+          <span style="background:${ac}22;color:${ac};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${c.tag}</span>
+          ${learned.has(c.id)?'<span style="color:#40c057;font-size:11px;">✓</span>':''}
+          ${hasMedia?'<span style="font-size:13px;">📎</span>':''}
+        </div>
+        <div class="list-meaning">${c.meaning}</div>
+      </div>
+      <span class="list-arrow">›</span>
+    </div>`;
+  }).join("");
+}
+
+function goToCard(i){ curIdx=i; setMode("study"); }
+function setMode(m){
+  mode=m;
+  document.getElementById("study-mode").style.display=m==="study"?"":"none";
+  document.getElementById("list-mode").style.display=m==="list"?"":"none";
+  document.querySelectorAll(".mode-btn").forEach((b,i)=>b.classList.toggle("active",(i===0&&m==="study")||(i===1&&m==="list")));
+  m==="list"?renderList():renderCard();
+}
+function setTag(t){ curTag=t; curIdx=0; renderTagBar(); renderCard(); if(mode==="list") renderList(); }
+function flipCard(){ flipped=!flipped; document.getElementById("card-inner").classList.toggle("flipped",flipped); }
+function go(d){ const f=filtered(); curIdx=(curIdx+d+f.length)%f.length; renderCard(); }
+function toggleLearned(){ const c=current(); if(!c) return; learned.has(c.id)?learned.delete(c.id):learned.add(c.id); save(); renderCard(); renderTagBar(); }
+
+function switchTab(t){
+  activeTab=t;
+  document.querySelectorAll(".tab-btn").forEach((b,i)=>b.classList.toggle("active",["yt","img","lnk"][i]===t));
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+  document.getElementById("tab-"+t).classList.add("active");
+}
+function previewImg(){
+  const url=document.getElementById("f-imgurl").value.trim();
+  const el=document.getElementById("img-preview");
+  el.src=url; el.style.display=url?"block":"none";
+}
+
+function clearModal(){
+  ["f-word","f-pron","f-meaning","f-example","f-exjp","f-yt","f-imgurl","f-linkurl","f-linklabel"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=""; });
+  document.getElementById("f-tag").value="名詞";
+  document.getElementById("img-preview").style.display="none";
+  switchTab("yt");
+}
+function openAdd(){
+  editId=null;
+  document.getElementById("modal-lbl").textContent="NEW CARD";
+  document.getElementById("modal-ttl").textContent="単語を追加";
+  clearModal();
+  document.getElementById("add-modal").style.display="flex";
+}
+function openEdit(id){
+  const c=cards.find(x=>x.id===id); if(!c) return;
+  editId=id;
+  document.getElementById("modal-lbl").textContent="EDIT CARD";
+  document.getElementById("modal-ttl").textContent="単語を編集";
+  document.getElementById("f-word").value=c.word||"";
+  document.getElementById("f-pron").value=c.pronunciation||"";
+  document.getElementById("f-meaning").value=c.meaning||"";
+  document.getElementById("f-example").value=c.example||"";
+  document.getElementById("f-exjp").value=c.exampleJP||"";
+  document.getElementById("f-tag").value=c.tag||"名詞";
+  document.getElementById("f-yt").value=c.ytUrl||"";
+  document.getElementById("f-imgurl").value=c.imgUrl||"";
+  document.getElementById("f-linkurl").value=c.linkUrl||"";
+  document.getElementById("f-linklabel").value=c.linkLabel||"";
+  const prev=document.getElementById("img-preview");
+  if(c.imgUrl){ prev.src=c.imgUrl; prev.style.display="block"; } else prev.style.display="none";
+  switchTab(c.ytUrl?"yt":c.imgUrl?"img":c.linkUrl?"lnk":"yt");
+  document.getElementById("add-modal").style.display="flex";
+}
+function closeAdd(){ document.getElementById("add-modal").style.display="none"; editId=null; }
+function submitCard(){
+  const word=document.getElementById("f-word").value.trim();
+  const meaning=document.getElementById("f-meaning").value.trim();
+  if(!word||!meaning) return alert("英単語と意味は必須です");
+  const data={
+    word, meaning,
+    pronunciation:document.getElementById("f-pron").value.trim(),
+    example:document.getElementById("f-example").value.trim(),
+    exampleJP:document.getElementById("f-exjp").value.trim(),
+    tag:document.getElementById("f-tag").value,
+    ytUrl:document.getElementById("f-yt").value.trim(),
+    imgUrl:document.getElementById("f-imgurl").value.trim(),
+    linkUrl:document.getElementById("f-linkurl").value.trim(),
+    linkLabel:document.getElementById("f-linklabel").value.trim(),
+  };
+  if(editId){ const i=cards.findIndex(c=>c.id===editId); if(i>=0) cards[i]={...cards[i],...data}; }
+  else cards.push({id:Date.now(),...data});
+  save(); renderTagBar(); renderCard(); renderList(); closeAdd();
+}
+
+renderTagBar();
+renderCard();
+</script>
+</body>
+</html>
