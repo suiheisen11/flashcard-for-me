@@ -299,19 +299,38 @@
 const COLORS = { "名詞":"#e94560","形容詞":"#a78bfa","動詞":"#40c057","副詞":"#fd7e14","Idiom":"#22d3ee","Phrasal Verb":"#f59e0b" };
 const col = tag => COLORS[tag] || "#e94560";
 
-let cards = JSON.parse(localStorage.getItem("en_cards5") || "null") || [
+// 旧キーからの自動マイグレーション（アップデートしても単語データが消えないように）
+(function migrate() {
+  const oldCardKeys  = ["en_cards5","en_cards4","en_cards3","en_cards2"];
+  const oldLearnKeys = ["en_learned5","en_learned4","en_learned3","en_learned2"];
+  if (!localStorage.getItem("en_cards")) {
+    for (const k of oldCardKeys) {
+      const v = localStorage.getItem(k);
+      if (v) { localStorage.setItem("en_cards", v); break; }
+    }
+  }
+  if (!localStorage.getItem("en_learned")) {
+    for (const k of oldLearnKeys) {
+      const v = localStorage.getItem(k);
+      if (v) { localStorage.setItem("en_learned", v); break; }
+    }
+  }
+})();
+
+const DEFAULT_CARDS = [
   {id:1,word:"Serendipity",pronunciation:"/ˌserənˈdipɪti/",meaning:"思いがけない幸運な発見",example:"Finding that café was pure serendipity.",exampleJP:"そのカフェを見つけたのは純粋な幸運だった。",tag:"名詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
   {id:2,word:"Ephemeral",pronunciation:"/ɪˈfemərəl/",meaning:"はかない、短命な",example:"The beauty of cherry blossoms is ephemeral.",exampleJP:"桜の美しさははかない。",tag:"形容詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
   {id:3,word:"Resilience",pronunciation:"/rɪˈzɪliəns/",meaning:"回復力、しなやかさ",example:"She showed incredible resilience after the setback.",exampleJP:"彼女は挫折の後、驚くべき回復力を見せた。",tag:"名詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
   {id:4,word:"Ambiguous",pronunciation:"/æmˈbɪɡjuəs/",meaning:"曖昧な、多義的な",example:"The instructions were ambiguous.",exampleJP:"その指示は曖昧だった。",tag:"形容詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
   {id:5,word:"Eloquent",pronunciation:"/ˈeləkwənt/",meaning:"雄弁な、表現力豊かな",example:"His eloquent speech moved the audience.",exampleJP:"彼の雄弁なスピーチは聴衆を感動させた。",tag:"形容詞",ytUrl:"",imgUrl:"",linkUrl:"",linkLabel:""},
 ];
-let learned = new Set((JSON.parse(localStorage.getItem("en_learned5") || "[]")).map(String));
+let cards = JSON.parse(localStorage.getItem("en_cards") || "null") || DEFAULT_CARDS;
+let learned = new Set((JSON.parse(localStorage.getItem("en_learned") || "[]")).map(String));
 let curTag = "全て", curIdx = 0, flipped = false, mode = "study", editId = null, activeTab = "yt", dir = "en2jp";
 
 const save = () => {
-  localStorage.setItem("en_cards5", JSON.stringify(cards));
-  localStorage.setItem("en_learned5", JSON.stringify([...learned].map(String)));
+  localStorage.setItem("en_cards", JSON.stringify(cards));
+  localStorage.setItem("en_learned", JSON.stringify([...learned].map(String)));
 };
 
 // Cards not yet learned, filtered by tag
