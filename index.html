@@ -140,10 +140,21 @@
     .tip { color: #3a3a3a; font-size: 11px; margin-top: -8px; margin-bottom: 12px; }
 
     /* Direction toggle */
-    #dir-bar { padding: 0 20px 12px; }
+    #dir-bar { padding: 0 20px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     #dir-toggle { background: #141414; border: 1px solid #222; border-radius: 20px; padding: 3px; display: inline-flex; gap: 2px; }
     .dir-btn { background: transparent; border: none; color: #555; padding: 5px 14px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
     .dir-btn.active { background: #252525; color: #fff; }
+
+    /* Shuffle */
+    #shuffle-btn {
+      background: #141414; border: 1px solid #222; color: #555;
+      padding: 6px 14px; border-radius: 20px; cursor: pointer;
+      font-size: 12px; font-weight: 600; transition: all 0.2s; white-space: nowrap;
+      display: flex; align-items: center; gap: 5px;
+    }
+    #shuffle-btn.on { background: #1a1a2e; border-color: #a78bfa; color: #a78bfa; }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    #shuffle-icon.spinning { display: inline-block; animation: spin 0.4s ease; }
   </style>
 </head>
 <body>
@@ -171,7 +182,11 @@
   <div id="dir-toggle">
     <button class="dir-btn active" onclick="setDir('en2jp')">英 → 日</button>
     <button class="dir-btn" onclick="setDir('jp2en')">日 → 英</button>
+    <button class="dir-btn" onclick="setDir('random')">ランダム</button>
   </div>
+  <button id="shuffle-btn" onclick="toggleShuffle()">
+    <span id="shuffle-icon">🔀</span> シャッフル
+  </button>
 </div>
 
 <!-- Study Mode -->
@@ -327,6 +342,8 @@ const DEFAULT_CARDS = [
 let cards = JSON.parse(localStorage.getItem("en_cards") || "null") || DEFAULT_CARDS;
 let learned = new Set((JSON.parse(localStorage.getItem("en_learned") || "[]")).map(String));
 let curTag = "全て", curIdx = 0, flipped = false, mode = "study", editId = null, activeTab = "yt", dir = "en2jp";
+let shuffleOn = false;
+let shuffleOrder = []; // shuffled indices into studyCards()
 
 const save = () => {
   localStorage.setItem("en_cards", JSON.stringify(cards));
@@ -338,7 +355,41 @@ const studyCards = () => {
   const base = curTag === "全て" ? cards : cards.filter(c => c.tag === curTag);
   return base.filter(c => !learned.has(String(c.id)));
 };
-const current = () => { const f = studyCards(); return f[Math.min(curIdx, f.length - 1)]; };
+
+// Build / rebuild a shuffled order for current studyCards
+function buildShuffleOrder() {
+  const len = studyCards().length;
+  shuffleOrder = Array.from({length: len}, (_, i) => i);
+  for (let i = shuffleOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffleOrder[i], shuffleOrder[j]] = [shuffleOrder[j], shuffleOrder[i]];
+  }
+}
+
+// Get actual card index considering shuffle
+const realIdx = () => shuffleOn && shuffleOrder.length > 0 ? shuffleOrder[Math.min(curIdx, shuffleOrder.length - 1)] : Math.min(curIdx, studyCards().length - 1);
+const current = () => { const f = studyCards(); const ri = realIdx(); return f[ri]; };
+
+// Pick direction for "random" mode
+function effectiveDir(c) {
+  if (dir === "random") {
+    // Use card id as seed so it stays consistent while on the same card
+    return (c.id % 2 === 0) ? "en2jp" : "jp2en";
+  }
+  return dir;
+}
+
+function toggleShuffle() {
+  shuffleOn = !shuffleOn;
+  curIdx = 0;
+  if (shuffleOn) buildShuffleOrder();
+  const btn = document.getElementById("shuffle-btn");
+  btn.classList.toggle("on", shuffleOn);
+  btn.innerHTML = `<span id="shuffle-icon" class="spinning">🔀</span> ${shuffleOn ? "シャッフル中" : "シャッフル"}`;
+  // remove spin class after animation
+  setTimeout(() => { const ic = document.getElementById("shuffle-icon"); if(ic) ic.classList.remove("spinning"); }, 400);
+  renderCard();
+}
 const ytId = url => { if (!url) return null; const m = url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
 
 function renderTagBar() {
@@ -366,7 +417,10 @@ function renderCard() {
   if (empty) return;
 
   if (curIdx >= f.length) curIdx = Math.max(0, f.length - 1);
-  const c = f[curIdx];
+  // Sync shuffleOrder length if cards changed
+  if (shuffleOn && shuffleOrder.length !== f.length) buildShuffleOrder();
+  const c = current();
+  if (!c) return;
   const pct = Math.round(((curIdx + 1) / f.length) * 100);
   document.getElementById("prog-index").textContent = `${curIdx + 1} / ${f.length}`;
   document.getElementById("prog-pct").textContent = `${pct}%`;
@@ -376,7 +430,7 @@ function renderCard() {
   document.getElementById("card-front").style.borderColor = ac + "33";
 
   // Direction-aware: front shows question, back shows answer
-  const isJP2EN = dir === "jp2en";
+  const isJP2EN = effectiveDir(c) === "jp2en";
   document.getElementById("card-hint-flip").textContent = isJP2EN ? "タップして英語を見る" : "タップして意味を見る";
 
   const ft = document.getElementById("front-tag");
@@ -484,6 +538,7 @@ function toggleLearned() {
   save();
   renderTagBar();
   renderLearnedMode();
+  if (shuffleOn) { curIdx = 0; buildShuffleOrder(); }
   // ピコッと緑に光らせてから次のカードへ
   const lb = document.getElementById("learned-btn");
   lb.textContent = "✓ 覚えた！";
@@ -502,16 +557,24 @@ function setMode(m) {
 
 function setTag(t) {
   curTag = t; curIdx = 0;
+  if (shuffleOn) buildShuffleOrder();
   renderTagBar(); renderCard();
 }
 
 function flipCard() { flipped = !flipped; document.getElementById("card-inner").classList.toggle("flipped", flipped); }
 function setDir(d) {
   dir = d;
-  document.querySelectorAll(".dir-btn").forEach((b,i) => b.classList.toggle("active", (i===0&&d==="en2jp")||(i===1&&d==="jp2en")));
+  document.querySelectorAll(".dir-btn").forEach((b,i) => b.classList.toggle("active", (i===0&&d==="en2jp")||(i===1&&d==="jp2en")||(i===2&&d==="random")));
   renderCard();
 }
-function go(d) { const f = studyCards(); curIdx = (curIdx + d + f.length) % f.length; renderCard(); }
+function go(d) {
+  const f = studyCards();
+  if (f.length === 0) return;
+  curIdx = (curIdx + d + f.length) % f.length;
+  // If shuffle is on and we wrapped around, re-shuffle
+  if (shuffleOn && d === 1 && curIdx === 0) buildShuffleOrder();
+  renderCard();
+}
 
 function switchTab(t) {
   activeTab = t;
