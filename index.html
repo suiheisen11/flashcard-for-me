@@ -45,17 +45,68 @@
 
     /* Small inline add button in tag bar (study mode) */
     #inline-add-btn {
-      background: transparent; border: 1px dashed #2a2a2a; color: #444;
-      padding: 5px 14px; border-radius: 20px; cursor: pointer;
-      font-size: 12px; font-weight: 700; white-space: nowrap;
-      transition: all 0.2s; flex-shrink: 0;
+      background: #e94560; border: none; color: #fff;
+      width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+      font-size: 18px; font-weight: 300; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 10px rgba(233,69,96,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
     }
-    #inline-add-btn:active { border-color: #e94560; color: #e94560; }
+    #inline-add-btn:active { transform: scale(0.88); box-shadow: 0 1px 4px rgba(233,69,96,0.2); }
 
-    #tag-bar { padding: 14px 20px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
-    #tag-bar::-webkit-scrollbar { display: none; }
-    .tag-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 0.2s; }
-    .tag-btn.active { background: #e94560; border-color: #e94560; }
+    /* Tag bar */
+    #tag-bar {
+      padding: 10px 20px; display: flex; gap: 8px;
+      align-items: center; border-bottom: 1px solid #111;
+    }
+    .tag-btn-all {
+      background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff;
+      padding: 6px 16px; border-radius: 20px; cursor: pointer;
+      font-size: 12px; font-weight: 700; white-space: nowrap; transition: all 0.2s; flex-shrink: 0;
+    }
+    .tag-btn-all.active { background: #e94560; border-color: #e94560; }
+
+    /* Genre dropdown wrapper */
+    #genre-wrap { position: relative; flex-shrink: 0; }
+    #genre-select-btn {
+      background: #141414; border: 1px solid #2a2a2a; color: #aaa;
+      padding: 6px 14px 6px 12px; border-radius: 20px; cursor: pointer;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    #genre-select-btn.has-selection { border-color: #e94560; color: #fff; }
+    #genre-select-btn .arrow { font-size: 9px; opacity: 0.5; transition: transform 0.2s; }
+    #genre-select-btn.open .arrow { transform: rotate(180deg); }
+
+    #genre-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0;
+      background: #111; border: 1px solid #222; border-radius: 16px;
+      padding: 6px; z-index: 100; min-width: 140px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      animation: slideUp 0.18s ease;
+    }
+    #genre-dropdown.open { display: block; }
+    .genre-option {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px; border-radius: 10px; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: #888; transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .genre-option:hover { background: #1a1a1a; color: #fff; }
+    .genre-option.active { color: #e94560; }
+    .genre-option .g-count { font-size: 10px; opacity: 0.45; font-family: monospace; }
+
+    /* active tag shown as chip next to dropdown */
+    #active-tag-chip {
+      display: none; align-items: center; gap: 6px;
+      background: #1f0d10; border: 1px solid #e9456044; border-radius: 20px;
+      padding: 5px 10px 5px 14px; font-size: 12px; font-weight: 700; color: #e94560;
+      flex-shrink: 0;
+    }
+    #active-tag-chip button {
+      background: none; border: none; color: #e94560; cursor: pointer;
+      font-size: 14px; padding: 0; line-height: 1; opacity: 0.7;
+    }
 
     /* Study mode */
     #study-mode { padding: 0 20px 40px; animation: slideUp 0.4s ease; }
@@ -380,8 +431,20 @@
 <button id="fab-add" onclick="openAdd()" aria-label="単語を追加">＋</button>
 
 <div id="tag-bar">
-  <button class="tag-btn active" onclick="setTag('全て')">全て</button>
-  <button id="inline-add-btn" onclick="openAdd()">＋ 追加</button>
+  <button class="tag-btn-all active" onclick="setTag('全て')">全て</button>
+  <div id="genre-wrap">
+    <button id="genre-select-btn" onclick="toggleGenreDropdown()">
+      <span id="genre-btn-label">ジャンル</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div id="genre-dropdown"></div>
+  </div>
+  <div id="active-tag-chip">
+    <span id="active-tag-label"></span>
+    <button onclick="setTag('全て')">✕</button>
+  </div>
+  <span style="flex:1"></span>
+  <button id="inline-add-btn" onclick="openAdd()" title="単語を追加">＋</button>
 </div>
 
 <!-- Direction toggle -->
@@ -956,15 +1019,79 @@ function quizNext(advance) {
 // ══════════════════════════════════════════════════════
 
 function renderTagBar() {
-  const tags = ["全て", ...new Set(cards.map(c => c.tag))];
-  document.getElementById("tag-bar").innerHTML = tags.map(t => {
-    const count = (t === "全て" ? cards : cards.filter(c => c.tag === t)).filter(c => !learned.has(String(c.id))).length;
-    return `<button class="tag-btn${t === curTag ? " active" : ""}" onclick="setTag('${t}')">${t} <span style="opacity:0.5;font-size:10px;">${count}</span></button>`;
-  }).join("") + `<button id="inline-add-btn" onclick="openAdd()" style="${mode !== 'study' ? 'display:none' : ''}">＋ 追加</button>`;
+  const tags = [...new Set(cards.map(c => c.tag))];
+
+  // 全てボタン
+  document.querySelector(".tag-btn-all").classList.toggle("active", curTag === "全て");
+
+  // アクティブチップ
+  const chip  = document.getElementById("active-tag-chip");
+  const chipLbl = document.getElementById("active-tag-label");
+  if (curTag !== "全て") {
+    chip.style.display = "flex";
+    chipLbl.textContent = curTag;
+  } else {
+    chip.style.display = "none";
+  }
+
+  // ドロップダウン内容
+  const dd = document.getElementById("genre-dropdown");
+  if (tags.length === 0) {
+    dd.innerHTML = `<div class="genre-option" style="color:#333;cursor:default;">タグなし</div>`;
+  } else {
+    dd.innerHTML = tags.map(t => {
+      const count = cards.filter(c => c.tag === t && !learned.has(String(c.id))).length;
+      return `<div class="genre-option${t === curTag ? " active" : ""}" onclick="selectGenre('${t}')">
+        <span>${t}</span><span class="g-count">${count}</span>
+      </div>`;
+    }).join("");
+  }
+
+  // ジャンルボタンのラベル
+  const btn = document.getElementById("genre-select-btn");
+  const lbl = document.getElementById("genre-btn-label");
+  if (curTag !== "全て") {
+    btn.classList.add("has-selection");
+    lbl.textContent = curTag;
+  } else {
+    btn.classList.remove("has-selection");
+    lbl.textContent = "ジャンル";
+  }
+
+  // inline-add-btn の表示制御
+  const addBtn = document.getElementById("inline-add-btn");
+  if (addBtn) addBtn.style.display = mode !== "study" ? "none" : "flex";
 
   // Badge on learned tab
   const badge = document.getElementById("learned-badge");
   badge.textContent = learned.size > 0 ? learned.size : "";
+}
+
+function toggleGenreDropdown() {
+  const dd  = document.getElementById("genre-dropdown");
+  const btn = document.getElementById("genre-select-btn");
+  const isOpen = dd.classList.contains("open");
+  dd.classList.toggle("open", !isOpen);
+  btn.classList.toggle("open", !isOpen);
+  if (!isOpen) {
+    // 外タップで閉じる
+    setTimeout(() => {
+      document.addEventListener("click", closeGenreDropdown, { once: true, capture: true });
+    }, 10);
+  }
+}
+
+function closeGenreDropdown(e) {
+  const wrap = document.getElementById("genre-wrap");
+  if (wrap && wrap.contains(e.target)) return;
+  document.getElementById("genre-dropdown").classList.remove("open");
+  document.getElementById("genre-select-btn").classList.remove("open");
+}
+
+function selectGenre(t) {
+  document.getElementById("genre-dropdown").classList.remove("open");
+  document.getElementById("genre-select-btn").classList.remove("open");
+  setTag(t);
 }
 
 function renderCard() {
