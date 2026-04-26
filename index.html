@@ -18,18 +18,39 @@
 
     #header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 52px 20px 16px;
+      padding: 52px 20px 14px;
       border-bottom: 1px solid #1a1a1a;
       background: rgba(8,8,8,0.97);
       position: sticky; top: 0; z-index: 50;
     }
     #header .label { color: #e94560; font-size: 10px; letter-spacing: 4px; font-family: 'DM Mono', monospace; }
     #header .title { font-size: 16px; font-weight: 900; font-family: 'Playfair Display', serif; white-space: nowrap; }
-    .mode-toggle { background: #1a1a1a; border-radius: 20px; padding: 4px; display: flex; gap: 2px; }
-    .mode-btn { background: transparent; border: none; color: #666; padding: 6px 12px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
+    .mode-toggle { background: #141414; border: 1px solid #1e1e1e; border-radius: 22px; padding: 4px; display: flex; gap: 2px; }
+    .mode-btn { background: transparent; border: none; color: #555; padding: 7px 14px; border-radius: 18px; cursor: pointer; font-size: 12px; font-weight: 700; transition: all 0.2s; white-space: nowrap; }
     .mode-btn.active { background: #e94560; color: #fff; }
     .mode-btn.learned-tab.active { background: #40c057; color: #fff; }
-    #add-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #fff; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+    /* FAB - floating add button (quiz/learned modes only) */
+    #fab-add {
+      position: fixed; bottom: 28px; right: 20px; z-index: 80;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #e94560; border: none; color: #fff;
+      font-size: 26px; font-weight: 300; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(233,69,96,0.45);
+      display: none; align-items: center; justify-content: center;
+      transition: transform 0.18s, box-shadow 0.18s, opacity 0.2s;
+    }
+    #fab-add.visible { display: flex; }
+    #fab-add:active { transform: scale(0.92); box-shadow: 0 2px 12px rgba(233,69,96,0.3); }
+
+    /* Small inline add button in tag bar (study mode) */
+    #inline-add-btn {
+      background: transparent; border: 1px dashed #2a2a2a; color: #444;
+      padding: 5px 14px; border-radius: 20px; cursor: pointer;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    #inline-add-btn:active { border-color: #e94560; color: #e94560; }
 
     #tag-bar { padding: 14px 20px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
     #tag-bar::-webkit-scrollbar { display: none; }
@@ -183,17 +204,6 @@
     .quiz-choice.reveal  { border-color: #40c057; color: #40c057; }
     .choice-mark { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 18px; }
 
-    /* Listening */
-    .listen-btn {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      background: #1a1a2e; border: 1px solid #a78bfa; color: #a78bfa;
-      padding: 18px; border-radius: 16px; cursor: pointer;
-      font-size: 16px; font-weight: 700; width: 100%; margin-bottom: 18px;
-      transition: all 0.2s;
-    }
-    .listen-btn:active { transform: scale(0.97); }
-    .listen-btn.playing { background: #1a2e1a; border-color: #40c057; color: #40c057; }
-
     /* Fill-blank */
     .blank-sentence {
       font-size: 16px; line-height: 2; text-align: center; color: #ccc;
@@ -331,20 +341,23 @@
       cursor: pointer; display: block; width: 100%; max-width: 280px; margin: 0 auto;
     }
 
-    /* Direction toggle */
-    #dir-bar { padding: 0 20px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    #dir-toggle { background: #141414; border: 1px solid #222; border-radius: 20px; padding: 3px; display: inline-flex; gap: 2px; }
-    .dir-btn { background: transparent; border: none; color: #555; padding: 5px 14px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; white-space: nowrap; }
-    .dir-btn.active { background: #252525; color: #fff; }
+    /* Direction + shuffle bar */
+    #dir-bar {
+      padding: 10px 20px 10px; display: flex; align-items: center;
+      gap: 8px; border-bottom: 1px solid #111;
+    }
+    #dir-toggle { background: #111; border: 1px solid #1e1e1e; border-radius: 20px; padding: 3px; display: inline-flex; gap: 1px; flex-shrink: 0; }
+    .dir-btn { background: transparent; border: none; color: #444; padding: 5px 12px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 700; transition: all 0.2s; white-space: nowrap; }
+    .dir-btn.active { background: #1e1e1e; color: #fff; }
 
     /* Shuffle */
     #shuffle-btn {
-      background: #141414; border: 1px solid #222; color: #555;
-      padding: 6px 14px; border-radius: 20px; cursor: pointer;
-      font-size: 12px; font-weight: 600; transition: all 0.2s; white-space: nowrap;
-      display: flex; align-items: center; gap: 5px;
+      background: transparent; border: 1px solid #1e1e1e; color: #444;
+      padding: 6px 12px; border-radius: 20px; cursor: pointer;
+      font-size: 12px; font-weight: 700; transition: all 0.2s; white-space: nowrap;
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0;
     }
-    #shuffle-btn.on { background: #1a1a2e; border-color: #a78bfa; color: #a78bfa; }
+    #shuffle-btn.on { border-color: #a78bfa; color: #a78bfa; background: #1a1a2e; }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
     #shuffle-icon.spinning { display: inline-block; animation: spin 0.4s ease; }
   </style>
@@ -356,18 +369,19 @@
     <div class="label">ENGLISH DECK</div>
     <div class="title">単語フラッシュカード</div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;">
-    <div class="mode-toggle">
-      <button class="mode-btn active" onclick="setMode('study')">学習</button>
-      <button class="mode-btn" onclick="setMode('quiz')" id="quiz-tab-btn">🎯 テスト</button>
-      <button class="mode-btn learned-tab" onclick="setMode('learned')">覚えた <span id="learned-badge"></span></button>
-    </div>
-    <button id="add-btn" onclick="openAdd()">+ 追加</button>
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('study')">学習</button>
+    <button class="mode-btn" onclick="setMode('quiz')">🎯 テスト</button>
+    <button class="mode-btn learned-tab" onclick="setMode('learned')">覚えた <span id="learned-badge"></span></button>
   </div>
 </div>
 
+<!-- FAB: floating add button -->
+<button id="fab-add" onclick="openAdd()" aria-label="単語を追加">＋</button>
+
 <div id="tag-bar">
   <button class="tag-btn active" onclick="setTag('全て')">全て</button>
+  <button id="inline-add-btn" onclick="openAdd()">＋ 追加</button>
 </div>
 
 <!-- Direction toggle -->
@@ -457,7 +471,6 @@
     <button class="qtype-btn" onclick="setQuizType('en2jp')">英 → 日</button>
     <button class="qtype-btn" onclick="setQuizType('jp2en')">日 → 英</button>
     <button class="qtype-btn" onclick="setQuizType('fill')">📝 穴埋め</button>
-    <button class="qtype-btn" onclick="setQuizType('listen')">🎧 リスニング</button>
   </div>
   <div id="quiz-score-bar">
     <span>問題 <span id="q-num">0</span> / <span id="q-total">0</span></span>
@@ -470,11 +483,6 @@
     </div>
     <div class="quiz-question" id="q-question"></div>
     <div class="quiz-sub" id="q-sub"></div>
-    <div id="q-listen-wrap" style="display:none;">
-      <button class="listen-btn" id="q-listen-btn" onclick="quizSpeak()">
-        <span style="font-size:24px;">🔊</span> タップして発音を聞く
-      </button>
-    </div>
     <div id="q-fill-sentence" class="blank-sentence" style="display:none;"></div>
     <div class="quiz-choices" id="q-choices"></div>
     <div id="quiz-result"></div>
@@ -690,7 +698,7 @@ let quizCurrentActualType = null;
 let quizChosenWrong = null;  // what user picked when wrong
 let speechSynth = window.speechSynthesis;
 
-const QUIZ_TYPES_POOL = ['en2jp','jp2en','fill','listen'];
+const QUIZ_TYPES_POOL = ['en2jp','jp2en','fill'];
 
 function quizAllCards() {
   const base = curTag === '全て' ? cards : cards.filter(c => c.tag === curTag);
@@ -781,8 +789,7 @@ function showFinish() {
 function pickQuizType(c) {
   if (quizType !== 'random') return quizType;
   const pool = [...QUIZ_TYPES_POOL];
-  if (!speechSynth) pool.splice(pool.indexOf('listen'), 1);
-  if (!c.example)   pool.splice(pool.indexOf('fill'), 1);
+  if (!c.example) pool.splice(pool.indexOf('fill'), 1);
   if (pool.length === 0) return 'en2jp';
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -842,28 +849,9 @@ function renderQuizQuestion() {
     const fillEl = document.getElementById('q-fill-sentence');
     fillEl.style.display = ''; fillEl.textContent = blanked;
     renderChoices(shuffle([c.word, ...getWrongChoices(c,'word',3)]), c.word);
-
-  } else if (qtype === 'listen') {
-    document.getElementById('q-type-label').textContent = 'リスニング';
-    document.getElementById('q-type-label').style.color = '#22d3ee';
-    qEl.textContent = '発音を聞いて単語を選ぼう'; qEl.style.fontSize = 'clamp(16px, 4vw, 22px)';
-    document.getElementById('q-listen-wrap').style.display = '';
-    setTimeout(() => quizSpeak(), 300);
-    renderChoices(shuffle([c.word, ...getWrongChoices(c,'word',3)]), c.word);
   }
 
   updateQuizScore();
-}
-
-function quizSpeak() {
-  if (!speechSynth) return;
-  speechSynth.cancel();
-  const utt = new SpeechSynthesisUtterance(quizCurrentCard.word);
-  utt.lang = 'en-US'; utt.rate = 0.9;
-  const btn = document.getElementById('q-listen-btn');
-  if (btn) btn.classList.add('playing');
-  utt.onend = () => { if (btn) btn.classList.remove('playing'); };
-  speechSynth.speak(utt);
 }
 
 function renderChoices(choices, correctAnswer) {
@@ -972,7 +960,7 @@ function renderTagBar() {
   document.getElementById("tag-bar").innerHTML = tags.map(t => {
     const count = (t === "全て" ? cards : cards.filter(c => c.tag === t)).filter(c => !learned.has(String(c.id))).length;
     return `<button class="tag-btn${t === curTag ? " active" : ""}" onclick="setTag('${t}')">${t} <span style="opacity:0.5;font-size:10px;">${count}</span></button>`;
-  }).join("");
+  }).join("") + `<button id="inline-add-btn" onclick="openAdd()" style="${mode !== 'study' ? 'display:none' : ''}">＋ 追加</button>`;
 
   // Badge on learned tab
   const badge = document.getElementById("learned-badge");
@@ -1123,11 +1111,13 @@ function toggleLearned() {
 
 function setMode(m) {
   mode = m;
-  document.getElementById("study-mode").style.display  = m === "study"  ? "block" : "none";
-  document.getElementById("learned-mode").style.display = m === "learned" ? "block" : "none";
-  document.getElementById("quiz-mode").style.display    = m === "quiz"   ? "block" : "none";
-  // dir-bar only shown in study mode
-  document.getElementById("dir-bar").style.display = m === "study" ? "flex" : "none";
+  document.getElementById("study-mode").style.display   = m === "study"   ? "block" : "none";
+  document.getElementById("learned-mode").style.display  = m === "learned"  ? "block" : "none";
+  document.getElementById("quiz-mode").style.display     = m === "quiz"    ? "block" : "none";
+  document.getElementById("dir-bar").style.display       = m === "study"   ? "flex"  : "none";
+  // 追加ボタン: 学習モードはタグバー内ボタン、他はFAB
+  document.getElementById("inline-add-btn").style.display = m === "study"  ? ""      : "none";
+  document.getElementById("fab-add").classList.toggle("visible", m !== "study");
   document.querySelectorAll(".mode-btn").forEach((b, i) => {
     b.classList.toggle("active",
       (i === 0 && m === "study") ||
