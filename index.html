@@ -628,7 +628,7 @@
     <input id="f-exjp" placeholder="例: そのカフェを見つけたのは純粋な幸運だった。" />
     <div class="field-label">品詞</div>
     <select id="f-tag">
-      <option>名詞</option><option>形容詞</option><option>動詞</option><option>副詞</option><option>Idiom</option><option>Phrasal Verb</option>
+      <option>名詞</option><option>形容詞</option><option>動詞</option><option>副詞</option><option>Idiom</option><option>Phrasal Verb</option><option>Sentence</option>
     </select>
 
     <hr class="section-divider" />
@@ -664,7 +664,7 @@
 </div>
 
 <script>
-const COLORS = { "名詞":"#e94560","形容詞":"#a78bfa","動詞":"#40c057","副詞":"#fd7e14","Idiom":"#22d3ee","Phrasal Verb":"#f59e0b" };
+const COLORS = { "名詞":"#e94560","形容詞":"#a78bfa","動詞":"#40c057","副詞":"#fd7e14","Idiom":"#22d3ee","Phrasal Verb":"#f59e0b","Sentence":"#60a5fa" };
 const col = tag => COLORS[tag] || "#e94560";
 
 // 旧キーからの自動マイグレーション（アップデートしても単語データが消えないように）
@@ -758,14 +758,13 @@ let quizWrong   = 0;
 let quizAnswered = false;
 let quizCurrentCard = null;
 let quizCurrentActualType = null;
-let quizChosenWrong = null;  // what user picked when wrong
-let speechSynth = window.speechSynthesis;
+let quizChosenWrong = null;
 
 const QUIZ_TYPES_POOL = ['en2jp','jp2en','fill'];
 
+// テストは覚えた単語も含む全カードから出題
 function quizAllCards() {
-  const base = curTag === '全て' ? cards : cards.filter(c => c.tag === curTag);
-  return base;
+  return [...cards]; // 全単語（タグ絞り込みなし、覚えた含む）
 }
 
 function shuffle(arr) {
@@ -780,7 +779,7 @@ function shuffle(arr) {
 function setQuizType(t) {
   quizType = t;
   document.querySelectorAll('.qtype-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['random','en2jp','jp2en','fill','listen'][i] === t);
+    b.classList.toggle('active', ['random','en2jp','jp2en','fill'][i] === t);
   });
   startQuizSession();
 }
@@ -869,7 +868,6 @@ function renderQuizQuestion() {
   document.getElementById('quiz-result').textContent      = '';
   document.getElementById('quiz-next-btn').style.display  = 'none';
   document.getElementById('quiz-skip-btn').style.display  = '';
-  document.getElementById('q-listen-wrap').style.display  = 'none';
   document.getElementById('q-fill-sentence').style.display= 'none';
   document.getElementById('q-sub').textContent = '';
 
@@ -921,10 +919,15 @@ function renderChoices(choices, correctAnswer) {
   const el = document.getElementById('q-choices');
   el.innerHTML = choices.map((ch, i) => {
     const letter = ['A','B','C','D'][i];
-    return `<button class="quiz-choice" data-val="${ch.replace(/"/g,'&quot;')}" data-correct="${ch === correctAnswer}" onclick="quizAnswer(this,'${correctAnswer.replace(/'/g,"\\'")}')">
+    const isCorrect = ch === correctAnswer;
+    return `<button class="quiz-choice" data-val="${ch.replace(/"/g,'&quot;')}" data-correct="${isCorrect}">
       <span style="opacity:0.4;margin-right:8px;font-family:monospace;">${letter}</span>${ch}
     </button>`;
   }).join('');
+  // イベントをJSで付与（文字列エスケープ問題を回避）
+  el.querySelectorAll('.quiz-choice').forEach(btn => {
+    btn.addEventListener('click', () => quizAnswer(btn, correctAnswer));
+  });
 }
 
 function quizAnswer(btn, correct) {
@@ -932,7 +935,7 @@ function quizAnswer(btn, correct) {
   quizAnswered = true;
 
   const chosen    = btn.dataset.val;
-  const isCorrect = chosen === correct;
+  const isCorrect = btn.dataset.correct === 'true';
 
   // Disable all choices
   document.querySelectorAll('.quiz-choice').forEach(b => b.style.pointerEvents = 'none');
@@ -949,7 +952,6 @@ function quizAnswer(btn, correct) {
     }, 900);
 
   } else {
-    // ── 不正解：押したボタンを赤、正解を緑にしてから解説モーダル ──
     quizWrong++;
     quizChosenWrong = chosen;
     updateQuizScore();
@@ -957,21 +959,21 @@ function quizAnswer(btn, correct) {
     btn.classList.add('wrong');
     btn.innerHTML += '<span class="choice-mark">✗</span>';
 
-    // 正解ボタンを光らせる
+    // 正解ボタンを光らせる & 正解テキストを取得
+    let correctText = correct;
     document.querySelectorAll('.quiz-choice').forEach(b => {
       if (b.dataset.correct === 'true') {
         b.classList.add('reveal');
         b.innerHTML += '<span class="choice-mark">✓</span>';
+        correctText = b.dataset.val;
       }
     });
 
-    // カードシェイク
     const qcard = document.getElementById('quiz-card');
     qcard.style.animation = 'shake 0.35s ease';
     setTimeout(() => { qcard.style.animation = ''; }, 350);
 
-    // 350ms後に解説モーダルを開く
-    setTimeout(() => openExplainModal(chosen, correct), 450);
+    setTimeout(() => openExplainModal(chosen, correctText), 450);
   }
 }
 
