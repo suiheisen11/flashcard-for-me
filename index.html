@@ -519,8 +519,15 @@
 
 <!-- Learned Mode -->
 <div id="learned-mode" style="display:none;">
-  <div id="learned-list"></div>
-  <div id="learned-empty" style="display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px 8px;">
+    <div style="font-size:12px;color:#555;font-family:monospace;">覚えた単語</div>
+    <div style="background:#141414;border:1px solid #1e1e1e;border-radius:20px;padding:3px;display:flex;gap:2px;">
+      <button id="sort-alpha-btn" class="dir-btn active" onclick="setLearnedSort('alpha')">A→Z</button>
+      <button id="sort-added-btn" class="dir-btn" onclick="setLearnedSort('added')">追加順</button>
+    </div>
+  </div>
+  <div id="learned-list" style="padding:0 20px 40px;"></div>
+  <div id="learned-empty" style="display:none;text-align:center;padding:60px 20px;color:#333;font-size:14px;">
     <div style="font-size:40px;margin-bottom:12px;">📚</div>
     <div style="font-weight:700;margin-bottom:6px;">まだ覚えた単語がありません</div>
     <div style="color:#444;font-size:13px;">学習中に「覚えた」を押すと<br>ここに移動します</div>
@@ -559,8 +566,30 @@
     <div style="font-size:16px;font-weight:700;margin-bottom:8px;">単語が足りません</div>
     <div style="color:#444;font-size:13px;">テストには最低4枚の単語カードが必要です。<br>「+ 追加」から単語を増やしてください。</div>
   </div>
-</div>
 
+  <!-- Quiz Finish Screen (inside quiz-mode so it hides together) -->
+  <div id="quiz-finish" style="display:none;text-align:center;padding:40px 20px 60px;">
+    <div class="finish-emoji" id="finish-emoji">🎉</div>
+    <div class="finish-title" id="finish-title">テスト終了！</div>
+    <div class="finish-sub" id="finish-sub">5問お疲れ様でした</div>
+    <div class="finish-score-row">
+      <div class="finish-score-box">
+        <div class="finish-score-num finish-correct-num" id="fin-correct">0</div>
+        <div class="finish-score-lbl">正解</div>
+      </div>
+      <div class="finish-score-box">
+        <div class="finish-score-num finish-wrong-num" id="fin-wrong">0</div>
+        <div class="finish-score-lbl">不正解</div>
+      </div>
+      <div class="finish-score-box">
+        <div class="finish-score-num finish-pct-num" id="fin-pct">0%</div>
+        <div class="finish-score-lbl">正答率</div>
+      </div>
+    </div>
+    <button id="quiz-retry-btn" onclick="retryQuiz()">もう一度テスト</button>
+    <button id="quiz-back-btn" onclick="setMode('study')">学習に戻る</button>
+  </div>
+</div>
 <!-- Quiz Explanation Modal (wrong answer) -->
 <div id="explain-modal">
   <div id="explain-box">
@@ -587,29 +616,6 @@
   </div>
 </div>
 
-<!-- Quiz Finish Screen -->
-<div id="quiz-finish">
-  <div class="finish-emoji" id="finish-emoji">🎉</div>
-  <div class="finish-title" id="finish-title">テスト終了！</div>
-  <div class="finish-sub" id="finish-sub">5問お疲れ様でした</div>
-  <div class="finish-score-row">
-    <div class="finish-score-box">
-      <div class="finish-score-num finish-correct-num" id="fin-correct">0</div>
-      <div class="finish-score-lbl">正解</div>
-    </div>
-    <div class="finish-score-box">
-      <div class="finish-score-num finish-wrong-num" id="fin-wrong">0</div>
-      <div class="finish-score-lbl">不正解</div>
-    </div>
-    <div class="finish-score-box">
-      <div class="finish-score-num finish-pct-num" id="fin-pct">0%</div>
-      <div class="finish-score-lbl">正答率</div>
-    </div>
-  </div>
-  <button id="quiz-retry-btn" onclick="retryQuiz()">もう一度テスト</button>
-  <button id="quiz-back-btn" onclick="setMode('study')">学習に戻る</button>
-</div>
-
 <!-- Add / Edit Modal -->
 <div id="add-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeAdd()">
   <div class="modal-box modal">
@@ -628,7 +634,7 @@
     <input id="f-exjp" placeholder="例: そのカフェを見つけたのは純粋な幸運だった。" />
     <div class="field-label">品詞</div>
     <select id="f-tag">
-      <option>名詞</option><option>形容詞</option><option>動詞</option><option>副詞</option><option>Idiom</option><option>Phrasal Verb</option><option>Sentence</option>
+      <option>名詞</option><option>形容詞</option><option>動詞</option><option>副詞</option><option>Idiom</option><option>Phrasal Verb</option><option>Sentence</option><option>時制</option>
     </select>
 
     <hr class="section-divider" />
@@ -664,7 +670,7 @@
 </div>
 
 <script>
-const COLORS = { "名詞":"#e94560","形容詞":"#a78bfa","動詞":"#40c057","副詞":"#fd7e14","Idiom":"#22d3ee","Phrasal Verb":"#f59e0b","Sentence":"#60a5fa" };
+const COLORS = { "名詞":"#e94560","形容詞":"#a78bfa","動詞":"#40c057","副詞":"#fd7e14","Idiom":"#22d3ee","Phrasal Verb":"#f59e0b","Sentence":"#60a5fa","時制":"#f472b6" };
 const col = tag => COLORS[tag] || "#e94560";
 
 // 旧キーからの自動マイグレーション（アップデートしても単語データが消えないように）
@@ -1191,8 +1197,21 @@ function renderCard() {
   lb.style.cssText = "flex:1;max-width:180px;padding:14px 0;border-radius:50px;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;border:1px solid #2a2a2a;color:#aaa;";
 }
 
+let learnedSort = 'alpha'; // 'alpha' | 'added'
+
+function setLearnedSort(s) {
+  learnedSort = s;
+  document.getElementById('sort-alpha-btn').classList.toggle('active', s === 'alpha');
+  document.getElementById('sort-added-btn').classList.toggle('active', s === 'added');
+  renderLearnedMode();
+}
+
 function renderLearnedMode() {
-  const learnedCards = cards.filter(c => learned.has(String(c.id)));
+  let learnedCards = cards.filter(c => learned.has(String(c.id)));
+  if (learnedSort === 'alpha') {
+    learnedCards = learnedCards.sort((a, b) => a.word.localeCompare(b.word, 'en'));
+  }
+  // 'added'のときはcards配列の順（追加順）をそのまま使う
   const list = document.getElementById("learned-list");
   const empty = document.getElementById("learned-empty");
   if (learnedCards.length === 0) {
@@ -1240,11 +1259,10 @@ function toggleLearned() {
 
 function setMode(m) {
   mode = m;
-  document.getElementById("study-mode").style.display   = m === "study"   ? "block" : "none";
+  document.getElementById("study-mode").style.display    = m === "study"   ? "block" : "none";
   document.getElementById("learned-mode").style.display  = m === "learned"  ? "block" : "none";
   document.getElementById("quiz-mode").style.display     = m === "quiz"    ? "block" : "none";
   document.getElementById("dir-bar").style.display       = m === "study"   ? "flex"  : "none";
-  // 追加ボタン: 学習モードはタグバー内ボタン、他はFAB
   document.getElementById("inline-add-btn").style.display = m === "study"  ? ""      : "none";
   document.getElementById("fab-add").classList.toggle("visible", m !== "study");
   document.querySelectorAll(".mode-btn").forEach((b, i) => {
@@ -1255,7 +1273,7 @@ function setMode(m) {
     );
   });
   if (m === "learned") renderLearnedMode();
-  else if (m === "quiz") { document.getElementById('quiz-finish').style.display='none'; startQuizSession(); }
+  else if (m === "quiz") startQuizSession();
   else renderCard();
 }
 
